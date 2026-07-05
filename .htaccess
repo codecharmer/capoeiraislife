@@ -1,0 +1,14 @@
+Options -Indexes
+DirectoryIndex disabled
+
+RewriteEngine On
+
+# Keep ACME challenge paths web-accessible for SSL renewals
+RewriteCond %{REQUEST_URI} ^/\.well-known/ [NC]
+RewriteRule ^ - [L]
+
+# Reverse proxy all requests to the Next.js app on localhost:3001
+RewriteRule ^(.*)$ http://127.0.0.1:3001/$1 [P,L]
+
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set X-Forwarded-Port "443"
