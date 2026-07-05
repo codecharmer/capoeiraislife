@@ -3,6 +3,8 @@ import { Inter, Oswald, Anton } from 'next/font/google';
 import { Providers } from './providers';
 import { LangProvider } from '@/lib/i18n';
 import { StoreProvider } from '@/lib/store-context';
+import { ProductsProvider } from '@/lib/products-context';
+import { getPrintfulCatalog } from '@/lib/printful';
 import { Navbar } from '@/components/store/Navbar';
 import { Footer } from '@/components/store/Footer';
 import { AnnouncementBar } from '@/components/store/AnnouncementBar';
@@ -29,7 +31,11 @@ export const metadata = {
 
 const orgSchema = { '@context': 'https://schema.org', '@type': 'Organization', name: 'Capoeira is Life', url: SITE_URL, logo: LOGO, sameAs: ['https://www.instagram.com/capoeira.is.life', 'https://facebook.com'] };
 
-export default function RootLayout({ children }) {
+// Re-fetch the Printful catalog at most every 10 minutes (ISR).
+export const revalidate = 600;
+
+export default async function RootLayout({ children }) {
+  const catalog = await getPrintfulCatalog();
   return (
     <html lang="en" className={`dark ${inter.variable} ${oswald.variable} ${anton.variable}`}>
       <head>
@@ -39,15 +45,17 @@ export default function RootLayout({ children }) {
       <body className="min-h-screen bg-background text-foreground antialiased">
         <Providers>
           <LangProvider>
-            <StoreProvider>
-              <AnnouncementBar />
-              <Navbar />
-              <main className="pt-9">{children}</main>
-              <Footer />
-              <CartDrawer />
-              <SearchDialog />
-              <Toaster position="top-center" theme="dark" richColors />
-            </StoreProvider>
+            <ProductsProvider products={catalog?.products} collections={catalog?.collections}>
+              <StoreProvider>
+                <AnnouncementBar />
+                <Navbar />
+                <main className="pt-9">{children}</main>
+                <Footer />
+                <CartDrawer />
+                <SearchDialog />
+                <Toaster position="top-center" theme="dark" richColors />
+              </StoreProvider>
+            </ProductsProvider>
           </LangProvider>
         </Providers>
       </body>

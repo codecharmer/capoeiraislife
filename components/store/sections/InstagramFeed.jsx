@@ -6,8 +6,8 @@ import { Reveal } from '../ui-bits';
 import { useLang } from '@/lib/i18n';
 import { Instagram, Play } from 'lucide-react';
 
-// Behold.so JSON feed (public, safe for the browser). Set NEXT_PUBLIC_BEHOLD_FEED_ID in .env
-const FEED_ID = process.env.NEXT_PUBLIC_BEHOLD_FEED_ID;
+// Behold.so JSON feed (public, safe for the browser). Override with NEXT_PUBLIC_BEHOLD_FEED_ID in .env if needed.
+const FEED_ID = process.env.NEXT_PUBLIC_BEHOLD_FEED_ID || 'tShEY2Z3oGeAXJ9obsVd';
 const PROFILE = 'https://www.instagram.com/capoeira.is.life';
 
 export function InstagramFeed() {

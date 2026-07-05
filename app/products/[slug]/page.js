@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { products } from '@/lib/store-data';
+import { useProducts } from '@/lib/products-context';
 import { useStore } from '@/lib/store-context';
 import { useLang } from '@/lib/i18n';
 import { Stars, formatPrice, badgeStyles } from '@/components/store/ui-bits';
@@ -20,6 +20,7 @@ const SIZE_GUIDE = [
 function ProductPage() {
   const { slug } = useParams();
   const { t } = useLang();
+  const { products } = useProducts();
   const product = products.find((p) => p.slug === slug);
   const { addToCart, setCartOpen, checkout } = useStore();
   const [active, setActive] = useState(0);
@@ -36,7 +37,7 @@ function ProductPage() {
     );
   }
 
-  const pc = t.pc[product.id];
+  const pc = t.pc[product.id] || { tagline: product.description || product.title, material: '', fit: '' };
   const pr = t.product;
   const sections = [
     { title: pr.sections.story, body: `${pc.tagline} ${pr.storySuffix}` },
@@ -55,7 +56,10 @@ function ProductPage() {
 
   const doAdd = (buyNow = false) => {
     const chosen = size || product.sizes[0];
-    addToCart(product, { color, size: chosen, qty });
+    const variantId = product.variantIndex
+      ? (product.variantIndex[`${color}|${chosen}`] || Object.values(product.variantIndex)[0] || null)
+      : null;
+    addToCart(product, { color, size: chosen, qty, variantId });
     if (buyNow) { setCartOpen(false); checkout(); }
   };
 

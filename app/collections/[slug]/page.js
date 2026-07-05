@@ -2,13 +2,14 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { products, collections } from '@/lib/store-data';
+import { useProducts } from '@/lib/products-context';
 import { ProductCard } from '@/components/store/ProductCard';
 import { useLang } from '@/lib/i18n';
 
 function CollectionPage() {
   const { slug } = useParams();
   const { t } = useLang();
+  const { products, collections } = useProducts();
   const col = collections.find((c) => c.slug === slug);
   const isAll = slug === 'all';
   const title = isAll ? t.collPage.all : (t.cat[slug] ? t.cat[slug].name : 'Collection');

@@ -6,11 +6,12 @@ import { useLang } from '@/lib/i18n';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { formatPrice } from './ui-bits';
 import { Minus, Plus, X, ShoppingBag } from 'lucide-react';
-import { products } from '@/lib/store-data';
+import { useProducts } from '@/lib/products-context';
 
 export function CartDrawer() {
   const { items, cartOpen, setCartOpen, updateQty, removeItem, subtotal, count, checkout, addToCart } = useStore();
   const { t } = useLang();
+  const { products } = useProducts();
   const suggested = products.filter((p) => !items.find((i) => i.id === p.id)).slice(0, 2);
   const freeAt = 75;
   const remaining = Math.max(0, freeAt - subtotal);

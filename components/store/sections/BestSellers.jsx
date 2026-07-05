@@ -1,12 +1,13 @@
 'use client';
 
-import { products } from '@/lib/store-data';
+import { useProducts } from '@/lib/products-context';
 import { ProductCard } from '../ProductCard';
 import { Reveal } from '../ui-bits';
 import { useLang } from '@/lib/i18n';
 
 export function BestSellers() {
   const { t } = useLang();
+  const { products } = useProducts();
   const best = products.slice(0, 8);
   return (
     <section id="bestsellers" className="relative mx-auto max-w-[1400px] overflow-hidden px-4 py-20 md:px-8">

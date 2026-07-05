@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useStore } from '@/lib/store-context';
 import { useLang } from '@/lib/i18n';
-import { products } from '@/lib/store-data';
+import { useProducts } from '@/lib/products-context';
 import { Search } from 'lucide-react';
 import { formatPrice } from './ui-bits';
 
@@ -14,6 +14,7 @@ const popular = ['Hoodie', 'Berimbau', 'Tank', 'Tee'];
 export function SearchDialog() {
   const { searchOpen, setSearchOpen } = useStore();
   const { t } = useLang();
+  const { products } = useProducts();
   const [q, setQ] = useState('');
   const results = useMemo(() => {
     const s = q.trim().toLowerCase();

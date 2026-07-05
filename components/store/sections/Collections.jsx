@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { collections } from '@/lib/store-data';
+import { useProducts } from '@/lib/products-context';
 import { Reveal } from '../ui-bits';
 import { useLang } from '@/lib/i18n';
 import { ArrowUpRight } from 'lucide-react';
 
 export function Collections() {
   const { t } = useLang();
+  const { collections } = useProducts();
   return (
     <section id="collections" className="relative mx-auto max-w-[1400px] overflow-hidden px-4 py-20 md:px-8">
       <div className="pointer-events-none absolute -left-20 top-20 h-72 w-72 rounded-full blur-3xl glow-green opacity-30" />
