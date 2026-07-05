@@ -1,0 +1,200 @@
+name: Deploy Next App to VPS
+
+on:
+  push:
+    branches:
+      - master
+
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy Next.js app
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -p "${{ secrets.SSH_PORT }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "whoami && hostname"
+
+      - name: Sync project files
+        run: |
+          rsync -az --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='.next' \
+            --exclude='.env' \
+            --exclude='npm-debug.log*' \
+            --exclude='yarn-error.log*' \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -p ${{ secrets.SSH_PORT }}" \
+            ./ \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
+
+      - name: Build and restart app with PM2
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o IdentitiesOnly=yes \
+            -p "${{ secrets.SSH_PORT }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" <<'EOF'
+            set -euo pipefail
+
+            APP_NAME="capoeiraislife"
+            APP_DIR="${{ secrets.DEPLOY_PATH }}"
+            PACKAGE_MANAGER="yarn"
+            HEALTHCHECK_PATH="/api/root"
+            export LANG=C
+            export LC_ALL=C
+            export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+
+            if [ -s "$NVM_DIR/nvm.sh" ]; then
+              . "$NVM_DIR/nvm.sh"
+              nvm use 20 >/dev/null 2>&1 || true
+            fi
+
+            cd "$APP_DIR"
+
+            if [ ! -f .env ]; then
+              echo "ERROR: .env not found in $APP_DIR"
+              exit 1
+            fi
+
+            NODE_MAJOR="$(node -v 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || true)"
+            if [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt 18 ]; then
+              echo "Node.js 18+ is required. Installing Node.js 20..."
+
+              GLIBC_MAJOR="0"
+              GLIBC_MINOR="0"
+              OLD_GLIBC="0"
+              if command -v getconf >/dev/null 2>&1; then
+                GLIBC_VERSION="$(getconf GNU_LIBC_VERSION 2>/dev/null | awk '{print $2}')"
+                GLIBC_MAJOR="${GLIBC_VERSION%%.*}"
+                GLIBC_MINOR="${GLIBC_VERSION#*.}"
+                GLIBC_MINOR="${GLIBC_MINOR%%.*}"
+              fi
+
+              if command -v yum >/dev/null 2>&1 && [ "${GLIBC_MAJOR:-0}" -eq 2 ] && [ "${GLIBC_MINOR:-0}" -lt 28 ]; then
+                OLD_GLIBC="1"
+                echo "Old glibc detected; trying cPanel EA4 Node package first..."
+                yum install -y ea-nodejs20 || yum install -y ea-nodejs18 || true
+                export PATH="/opt/cpanel/ea-nodejs20/root/usr/bin:/opt/cpanel/ea-nodejs20/bin:/opt/cpanel/ea-nodejs18/root/usr/bin:/opt/cpanel/ea-nodejs18/bin:$PATH"
+
+                NODE_MAJOR="$(node -v 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || true)"
+                if [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt 18 ]; then
+                  echo "EA4 Node 18/20 not available; installing Node 20 glibc-217 build..."
+                  yum install -y curl xz || yum install -y curl || true
+
+                  NODE_GLIBC217_VERSION="v20.11.1"
+                  NODE_GLIBC217_URL="https://unofficial-builds.nodejs.org/download/release/${NODE_GLIBC217_VERSION}/node-${NODE_GLIBC217_VERSION}-linux-x64-glibc-217.tar.xz"
+                  TMP_NODE_ARCHIVE="/tmp/node-${NODE_GLIBC217_VERSION}-linux-x64-glibc-217.tar.xz"
+
+                  curl -fL "$NODE_GLIBC217_URL" -o "$TMP_NODE_ARCHIVE"
+                  mkdir -p /opt/node20-glibc217
+                  tar -xJf "$TMP_NODE_ARCHIVE" -C /opt/node20-glibc217 --strip-components=1
+
+                  ln -sf /opt/node20-glibc217/bin/node /usr/local/bin/node
+                  ln -sf /opt/node20-glibc217/bin/npm /usr/local/bin/npm
+                  ln -sf /opt/node20-glibc217/bin/npx /usr/local/bin/npx
+                  ln -sf /opt/node20-glibc217/bin/corepack /usr/local/bin/corepack
+                  export PATH="/opt/node20-glibc217/bin:$PATH"
+                  hash -r
+                fi
+              fi
+
+              NODE_MAJOR="$(node -v 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || true)"
+              if [ "$OLD_GLIBC" = "0" ] && ( [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt 18 ] ); then
+                if command -v apt-get >/dev/null 2>&1; then
+                  export DEBIAN_FRONTEND=noninteractive
+                  apt-get update
+                  apt-get install -y curl ca-certificates gnupg
+                  mkdir -p /etc/apt/keyrings
+                  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+                  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+                  apt-get update
+                  apt-get install -y nodejs
+                elif command -v dnf >/dev/null 2>&1; then
+                  dnf install -y curl ca-certificates
+                  curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+                  dnf install -y nodejs
+                elif command -v yum >/dev/null 2>&1; then
+                  yum install -y curl ca-certificates
+                  curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+                  yum install -y nodejs
+                else
+                  echo "ERROR: unsupported package manager. Install Node.js 20 manually."
+                  exit 1
+                fi
+              fi
+            fi
+
+            NODE_MAJOR="$(node -v 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || true)"
+            if [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt 18 ]; then
+              echo "ERROR: Could not provision Node.js >=18 on this host."
+              echo "This app (Next.js 15 and dependencies) requires Node 18+."
+              echo "On CentOS 7-class hosts, use cPanel EA4 nodejs20 or a glibc-217 compatible Node 20 runtime."
+              exit 1
+            fi
+
+            if ! command -v "$PACKAGE_MANAGER" >/dev/null 2>&1; then
+              if command -v corepack >/dev/null 2>&1; then
+                corepack enable || true
+              fi
+            fi
+
+            if ! command -v "$PACKAGE_MANAGER" >/dev/null 2>&1; then
+              if [ "$PACKAGE_MANAGER" = "yarn" ]; then
+                npm install -g yarn
+              else
+                echo "ERROR: $PACKAGE_MANAGER is not installed on the server"
+                exit 1
+              fi
+            fi
+
+            if ! command -v pm2 >/dev/null 2>&1; then
+              npm install -g pm2
+            fi
+
+            if [ -f yarn.lock ]; then yarn install --frozen-lockfile; else yarn install; fi
+            yarn build
+
+            if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
+              pm2 restart "$APP_NAME" --update-env
+            else
+              pm2 start "yarn start" --name "$APP_NAME" --time
+            fi
+
+            pm2 save
+
+            if command -v curl >/dev/null 2>&1; then
+              curl -fsS "http://127.0.0.1:3000$HEALTHCHECK_PATH" >/dev/null || true
+            fi
+
+            if [ -x /usr/local/cpanel/scripts/ea-nginx ]; then
+              /usr/local/cpanel/scripts/ea-nginx clear_cache capoeiraislife || true
+              /usr/local/cpanel/scripts/ea-nginx reload || true
+            fi
+            EOF
