@@ -67,6 +67,8 @@ jobs:
             APP_DIR="${{ secrets.DEPLOY_PATH }}"
             PACKAGE_MANAGER="yarn"
             HEALTHCHECK_PATH="/api/root"
+            APP_PORT="3001"
+            export PORT="$APP_PORT"
             export LANG=C
             export LC_ALL=C
             export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
@@ -181,16 +183,19 @@ jobs:
             if [ -f yarn.lock ]; then yarn install --frozen-lockfile; else yarn install; fi
             yarn build
 
+            # Resolve the Node 20 binary so PM2 never falls back to an older Node in PATH.
+            NODE_BIN="$(command -v node)"
+            NEXT_BIN="$APP_DIR/node_modules/.bin/next"
+
             if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
-              pm2 restart "$APP_NAME" --update-env
-            else
-              pm2 start "yarn start" --name "$APP_NAME" --time
+              pm2 delete "$APP_NAME"
             fi
+            PORT="$APP_PORT" pm2 start "$NEXT_BIN" --name "$APP_NAME" --interpreter "$NODE_BIN" --time --update-env -- start
 
             pm2 save
 
             if command -v curl >/dev/null 2>&1; then
-              curl -fsS "http://127.0.0.1:3000$HEALTHCHECK_PATH" >/dev/null || true
+              curl -fsS "http://127.0.0.1:$APP_PORT$HEALTHCHECK_PATH" >/dev/null || true
             fi
 
             if [ -x /usr/local/cpanel/scripts/ea-nginx ]; then
