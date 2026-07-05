@@ -196,5 +196,4 @@ jobs:
             if [ -x /usr/local/cpanel/scripts/ea-nginx ]; then
               /usr/local/cpanel/scripts/ea-nginx clear_cache capoeiraislife || true
               /usr/local/cpanel/scripts/ea-nginx reload || true
-            fi
-            EOF
+            fi 
