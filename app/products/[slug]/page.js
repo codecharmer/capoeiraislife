@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useProducts } from '@/lib/products-context';
 import { useStore } from '@/lib/store-context';
 import { useLang } from '@/lib/i18n';
-import { Stars, formatPrice, badgeStyles } from '@/components/store/ui-bits';
+import { useCurrency } from '@/lib/currency-context';
+import { Stars, badgeStyles } from '@/components/store/ui-bits';
 import { ProductCard } from '@/components/store/ProductCard';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -21,6 +22,7 @@ function ProductPage() {
   const { slug } = useParams();
   const { t } = useLang();
   const { products } = useProducts();
+  const { format: formatPrice } = useCurrency();
   const product = products.find((p) => p.slug === slug);
   const { addToCart, setCartOpen, checkout } = useStore();
   const [active, setActive] = useState(0);

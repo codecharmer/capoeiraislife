@@ -4,14 +4,15 @@ import Link from 'next/link';
 import { useStore } from '@/lib/store-context';
 import { useLang } from '@/lib/i18n';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { formatPrice } from './ui-bits';
 import { Minus, Plus, X, ShoppingBag } from 'lucide-react';
 import { useProducts } from '@/lib/products-context';
+import { useCurrency } from '@/lib/currency-context';
 
 export function CartDrawer() {
   const { items, cartOpen, setCartOpen, updateQty, removeItem, subtotal, count, checkout, addToCart } = useStore();
   const { t } = useLang();
   const { products } = useProducts();
+  const { format: formatPrice, currency } = useCurrency();
   const suggested = products.filter((p) => !items.find((i) => i.id === p.id)).slice(0, 2);
   const freeAt = 75;
   const remaining = Math.max(0, freeAt - subtotal);
@@ -81,7 +82,7 @@ export function CartDrawer() {
             <div className="border-t border-border px-5 py-4">
               <div className="mb-3 flex justify-between text-sm"><span className="text-muted-foreground">{t.cart.subtotal}</span><span className="font-semibold">{formatPrice(subtotal)}</span></div>
               <button onClick={checkout} className="w-full rounded-sm bg-primary py-4 font-oswald text-sm font-semibold uppercase tracking-widest text-primary-foreground transition hover:brightness-110">{t.cart.checkout}</button>
-              <p className="mt-2 text-center text-[11px] text-muted-foreground">{t.cart.taxes}</p>
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">{t.cart.taxes}{currency !== 'USD' ? ' · USD' : ''}</p>
             </div>
           </>
         )}

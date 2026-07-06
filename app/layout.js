@@ -4,6 +4,7 @@ import { Providers } from './providers';
 import { LangProvider } from '@/lib/i18n';
 import { StoreProvider } from '@/lib/store-context';
 import { ProductsProvider } from '@/lib/products-context';
+import { CurrencyProvider } from '@/lib/currency-context';
 import { getPrintfulCatalog } from '@/lib/printful';
 import { Navbar } from '@/components/store/Navbar';
 import { Footer } from '@/components/store/Footer';
@@ -46,15 +47,17 @@ export default async function RootLayout({ children }) {
         <Providers>
           <LangProvider>
             <ProductsProvider products={catalog?.products} collections={catalog?.collections}>
-              <StoreProvider>
-                <AnnouncementBar />
-                <Navbar />
-                <main className="pt-9">{children}</main>
-                <Footer />
-                <CartDrawer />
-                <SearchDialog />
-                <Toaster position="top-center" theme="dark" richColors />
-              </StoreProvider>
+              <CurrencyProvider>
+                <StoreProvider>
+                  <AnnouncementBar />
+                  <Navbar />
+                  <main className="pt-9">{children}</main>
+                  <Footer />
+                  <CartDrawer />
+                  <SearchDialog />
+                  <Toaster position="top-center" theme="dark" richColors />
+                </StoreProvider>
+              </CurrencyProvider>
             </ProductsProvider>
           </LangProvider>
         </Providers>

@@ -6,11 +6,13 @@ import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { useStore } from '@/lib/store-context';
 import { useLang } from '@/lib/i18n';
-import { Stars, formatPrice, badgeStyles } from './ui-bits';
+import { useCurrency } from '@/lib/currency-context';
+import { Stars, badgeStyles } from './ui-bits';
 
 export function ProductCard({ product, index = 0 }) {
   const { addToCart } = useStore();
   const { t } = useLang();
+  const { format: formatPrice } = useCurrency();
   const [hover, setHover] = useState(false);
   const img2 = product.images[1] || product.images[0];
   return (
