@@ -7,7 +7,9 @@ import { createContext, useContext, useEffect, useMemo, useState, useCallback } 
 
 const SUPPORTED = ['USD', 'MXN', 'BRL', 'EUR'];
 
-const CURRENCY_LOCALE = { USD: 'en-US', MXN: 'es-MX', BRL: 'pt-BR', EUR: 'de-DE' };
+// MXN uses en-US locale so it renders an unambiguous "MX$" instead of the
+// bare "$" that es-MX produces (easily mistaken for USD).
+const CURRENCY_LOCALE = { USD: 'en-US', MXN: 'en-US', BRL: 'pt-BR', EUR: 'de-DE' };
 
 const EURO_COUNTRIES = new Set([
   'AT', 'BE', 'HR', 'CY', 'EE', 'FI', 'FR', 'DE', 'GR', 'IE', 'IT',
